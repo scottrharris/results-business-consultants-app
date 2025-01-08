@@ -67,3 +67,6 @@ jobs:
         asset_path: $GITHUB_WORKSPACE/release/results-windows-installer.zip
         asset_name: results-windows-installer.zip
         asset_content_type: application/zip
+
+    - name: Wait for uploads to complete
+      run: sleep 600
