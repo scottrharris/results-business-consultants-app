@@ -1,0 +1,69 @@
+name: Update Initial Release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  update-initial-release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Get latest release ID
+      id: get_latest_release
+      run: |
+        latest_release_id=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+        https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/latest | jq -r .id)
+        echo "::set-output name=latest_release_id::$latest_release_id"
+
+    - name: Download assets from latest release
+      run: |
+        assets=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+        https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ steps.get_latest_release.outputs.latest_release_id }}/assets | jq -r '.[].browser_download_url')
+        mkdir -p $GITHUB_WORKSPACE/release
+        for asset in $assets; do
+          curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -o $GITHUB_WORKSPACE/release/$(basename $asset) $asset;
+        done
+
+    - name: Copy and rename files
+      run: |
+        # Rename the .dmg file
+        mv $GITHUB_WORKSPACE/release/results-business-consultants-*.dmg $GITHUB_WORKSPACE/release/results-macos-installer.dmg
+
+        # Zip and rename the .exe file
+        zip $GITHUB_WORKSPACE/release/results-windows-installer.zip $GITHUB_WORKSPACE/release/results-business-consultants-*.exe
+
+    - name: Get initial release ID
+      id: get_initial_release
+      run: |
+        initial_release_id=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+        https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/tags/initial | jq -r .id)
+        echo "::set-output name=initial_release_id::$initial_release_id"
+
+    - name: Delete old assets
+      run: |
+        assets=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+        https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ steps.get_initial_release.outputs.initial_release_id }}/assets | jq -r '.[].id')
+        for asset in $assets; do
+          curl -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/assets/$asset;
+        done
+
+    - name: Upload new assets
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ steps.get_initial_release.outputs.initial_release_id }}/assets?name=results-macos-installer.dmg
+        asset_path: $GITHUB_WORKSPACE/release/results-macos-installer.dmg
+        asset_name: results-macos-installer.dmg
+        asset_content_type: application/octet-stream
+    
+    - name: Upload new assets
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ steps.get_initial_release.outputs.initial_release_id }}/assets?name=results-windows-installer.zip
+        asset_path: $GITHUB_WORKSPACE/release/results-windows-installer.zip
+        asset_name: results-windows-installer.zip
+        asset_content_type: application/zip
