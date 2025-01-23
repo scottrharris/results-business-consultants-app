@@ -18,12 +18,12 @@ jobs:
       run: |
         latest_release_id=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
         https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/latest | jq -r .id)
-        echo "::set-output name=latest_release_id::$latest_release_id"
+        echo "latest_release_id=$latest_release_id" >> $GITHUB_ENV
 
     - name: Download assets from latest release
       run: |
         assets=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-        https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ steps.get_latest_release.outputs.latest_release_id }}/assets | jq -r '.[].browser_download_url')
+        https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ env.latest_release_id }}/assets | jq -r '.[].browser_download_url')
         mkdir -p $GITHUB_WORKSPACE/release
         for asset in $assets; do
           curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -o $GITHUB_WORKSPACE/release/$(basename $asset) $asset;
@@ -45,12 +45,12 @@ jobs:
       run: |
         initial_release_id=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
         https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/tags/initial | jq -r .id)
-        echo "::set-output name=initial_release_id::$initial_release_id"
+        echo "initial_release_id=$initial_release_id" >> $GITHUB_ENV
 
     - name: Delete old assets
       run: |
         assets=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-        https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ steps.get_initial_release.outputs.initial_release_id }}/assets | jq -r '.[].id')
+        https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ env.initial_release_id }}/assets | jq -r '.[].id')
         for asset in $assets; do
           curl -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/assets/$asset;
@@ -59,7 +59,7 @@ jobs:
     - name: Upload new assets
       uses: actions/upload-release-asset@v1
       with:
-        upload_url: https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ steps.get_initial_release.outputs.initial_release_id }}/assets?name=results-macos-installer.dmg
+        upload_url: https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ env.initial_release_id }}/assets?name=results-macos-installer.dmg
         asset_path: $GITHUB_WORKSPACE/release/results-macos-installer.dmg
         asset_name: results-macos-installer.dmg
         asset_content_type: application/octet-stream
@@ -67,7 +67,7 @@ jobs:
     - name: Upload new assets
       uses: actions/upload-release-asset@v1
       with:
-        upload_url: https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ steps.get_initial_release.outputs.initial_release_id }}/assets?name=results-windows-installer.zip
+        upload_url: https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ env.initial_release_id }}/assets?name=results-windows-installer.zip
         asset_path: $GITHUB_WORKSPACE/release/results-windows-installer.zip
         asset_name: results-windows-installer.zip
         asset_content_type: application/zip
@@ -75,7 +75,7 @@ jobs:
     - name: Upload new assets
       uses: actions/upload-release-asset@v1
       with:
-        upload_url: https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ steps.get_initial_release.outputs.initial_release_id }}/assets?name=results-windows-installer.exe
+        upload_url: https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ env.initial_release_id }}/assets?name=results-windows-installer.exe
         asset_path: $GITHUB_WORKSPACE/release/results-windows-installer.exe
         asset_name: results-windows-installer.exe
         asset_content_type: application/octet-stream
@@ -83,7 +83,7 @@ jobs:
     - name: Upload latest.yml
       uses: actions/upload-release-asset@v1
       with:
-        upload_url: https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ steps.get_initial_release.outputs.initial_release_id }}/assets?name=latest.yml
+        upload_url: https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ env.initial_release_id }}/assets?name=latest.yml
         asset_path: $GITHUB_WORKSPACE/release/latest.yml
         asset_name: latest.yml
         asset_content_type: application/x-yaml
@@ -91,7 +91,7 @@ jobs:
     - name: Upload latest-mac.yml
       uses: actions/upload-release-asset@v1
       with:
-        upload_url: https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ steps.get_initial_release.outputs.initial_release_id }}/assets?name=latest-mac.yml
+        upload_url: https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ env.initial_release_id }}/assets?name=latest-mac.yml
         asset_path: $GITHUB_WORKSPACE/release/latest-mac.yml
         asset_name: latest-mac.yml
         asset_content_type: application/x-yaml
