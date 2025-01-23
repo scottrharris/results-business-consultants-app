@@ -81,3 +81,19 @@ jobs:
         asset_path: $GITHUB_WORKSPACE/release/results-windows-installer.exe
         asset_name: results-windows-installer.zip
         asset_content_type: application/zip
+
+    - name: Upload latest.yml
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ steps.get_initial_release.outputs.initial_release_id }}/assets?name=latest.yml
+        asset_path: $GITHUB_WORKSPACE/release/latest.yml
+        asset_name: latest.yml
+        asset_content_type: application/x-yaml
+
+    - name: Upload latest-mac.yml
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ steps.get_initial_release.outputs.initial_release_id }}/assets?name=latest-mac.yml
+        asset_path: $GITHUB_WORKSPACE/release/latest-mac.yml
+        asset_name: latest-mac.yml
+        asset_content_type: application/x-yaml
