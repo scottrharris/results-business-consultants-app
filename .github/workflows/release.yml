@@ -3,6 +3,7 @@ name: Update Initial Release
 on:
   release:
     types: [created]
+  workflow_dispatch:
 
 jobs:
   update-initial-release:
@@ -36,11 +37,11 @@ jobs:
         # Rename the .dmg file
         mv $GITHUB_WORKSPACE/release/results-business-consultants-*.dmg $GITHUB_WORKSPACE/release/results-macos-installer.dmg
 
-        # Rename the .exe file
-        mv $GITHUB_WORKSPACE/release/results-business-consultants-*.exe $GITHUB_WORKSPACE/release/results-macos-installer.exe
+        # Copy the .exe file
+        cp $GITHUB_WORKSPACE/release/results-business-consultants-*.exe $GITHUB_WORKSPACE/release/results-windows-installer.exe
         
         # Zip and rename the .exe file
-        zip $GITHUB_WORKSPACE/release/results-windows-installer.zip $GITHUB_WORKSPACE/release/results-business-consultants.exe
+        zip $GITHUB_WORKSPACE/release/results-windows-installer.zip $GITHUB_WORKSPACE/release/results-business-consultants-*.exe
 
     - name: Get initial release ID
       id: get_initial_release
@@ -79,8 +80,8 @@ jobs:
       with:
         upload_url: https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/${{ steps.get_initial_release.outputs.initial_release_id }}/assets?name=results-windows-installer.exe
         asset_path: $GITHUB_WORKSPACE/release/results-windows-installer.exe
-        asset_name: results-windows-installer.zip
-        asset_content_type: application/zip
+        asset_name: results-windows-installer.exe
+        asset_content_type: application/octet-stream
 
     - name: Upload latest.yml
       uses: actions/upload-release-asset@v1
