@@ -97,3 +97,6 @@ jobs:
         asset_path: $GITHUB_WORKSPACE/release/latest-mac.yml
         asset_name: latest-mac.yml
         asset_content_type: application/x-yaml
+
+    - name: Clean up temporary files
+      run: rm -rf $GITHUB_WORKSPACE/release
