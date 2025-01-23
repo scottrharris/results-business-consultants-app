@@ -36,6 +36,9 @@ jobs:
         # Rename the .dmg file
         mv $GITHUB_WORKSPACE/release/results-business-consultants-*.dmg $GITHUB_WORKSPACE/release/results-macos-installer.dmg
 
+         # Copy the .exe file
+        cp $GITHUB_WORKSPACE/release/results-business-consultants-*.exe $GITHUB_WORKSPACE/release/results-windows-installer.exe
+        
         # Zip and rename the .exe file
         zip $GITHUB_WORKSPACE/release/results-windows-installer.zip $GITHUB_WORKSPACE/release/results-business-consultants-*.exe
 
