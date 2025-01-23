@@ -20,9 +20,6 @@ jobs:
         https://api.github.com/repos/scottrharris/results-business-consultants-app/releases/latest | jq -r .id)
         echo "::set-output name=latest_release_id::$latest_release_id"
 
-    - name: Wait for uploads to complete
-      run: sleep 600
-
     - name: Download assets from latest release
       run: |
         assets=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
