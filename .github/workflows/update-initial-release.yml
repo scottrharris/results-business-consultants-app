@@ -148,40 +148,48 @@ jobs:
           # Get the URL for the original release
           RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/$LATEST_VERSION"
           
-          NOTES="# Results Business Consultants - Latest Release
-
-This release automatically mirrors the latest stable version of the application.
-
-**Current Version:** $LATEST_VERSION
-**Last Updated:** $CURRENT_DATE
-
-## 📥 Download Files
-
-- **Windows Installer:** \`results-windows-installer.exe\` (also available as .zip)
-- **macOS Installer:** \`results-macos-installer.dmg\`
-- **Auto-update files:** \`latest.yml\` and \`latest-mac.yml\`
-
-## Installation Instructions
-
-### Windows
-1. Download \`results-windows-installer.exe\` (or the .zip version if needed)
-2. Run the installer and follow the setup wizard
-
-### macOS
-1. Download \`results-macos-installer.dmg\`
-2. Open the DMG file and drag the app to Applications
-
-## Note
-
-This is an automatically maintained release that always contains the latest stable build. 
-
-For specific version information and detailed release notes, see the original release: [$LATEST_VERSION]($RELEASE_URL)
-
----
-*Automatically synchronized from [$LATEST_VERSION]($RELEASE_URL) on $CURRENT_DATE*"
+          cat > release-notes.md << 'EOF'
+          # Results Business Consultants - Latest Release
           
+          This release automatically mirrors the latest stable version of the application.
+          
+          **Current Version:** VERSION_PLACEHOLDER
+          **Last Updated:** DATE_PLACEHOLDER
+          
+          ## 📥 Download Files
+          
+          - **Windows Installer:** `results-windows-installer.exe` (also available as .zip)
+          - **macOS Installer:** `results-macos-installer.dmg`
+          - **Auto-update files:** `latest.yml` and `latest-mac.yml`
+          
+          ## Installation Instructions
+          
+          ### Windows
+          1. Download `results-windows-installer.exe` (or the .zip version if needed)
+          2. Run the installer and follow the setup wizard
+          
+          ### macOS
+          1. Download `results-macos-installer.dmg`
+          2. Open the DMG file and drag the app to Applications
+          
+          ## Note
+          
+          This is an automatically maintained release that always contains the latest stable build.
+          
+          For specific version information and detailed release notes, see the original release: [VERSION_PLACEHOLDER](URL_PLACEHOLDER)
+          
+          ---
+          *Automatically synchronized from [VERSION_PLACEHOLDER](URL_PLACEHOLDER) on DATE_PLACEHOLDER*
+          EOF
+          
+          # Replace placeholders
+          sed -i "s|VERSION_PLACEHOLDER|$LATEST_VERSION|g" release-notes.md
+          sed -i "s|DATE_PLACEHOLDER|$CURRENT_DATE|g" release-notes.md
+          sed -i "s|URL_PLACEHOLDER|$RELEASE_URL|g" release-notes.md
+          
+          # Update the release with the new notes
           gh release edit $INITIAL_TAG \
-            --notes "$NOTES" \
+            --notes-file release-notes.md \
             --repo ${{ github.repository }}
           
           echo "✅ Initial release updated successfully!"
