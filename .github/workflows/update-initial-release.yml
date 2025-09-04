@@ -1,0 +1,187 @@
+name: Update Initial Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-initial-release:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Download release assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Create temp directory for assets
+          mkdir -p temp-assets
+          mkdir -p processed-assets
+          
+          # Download all assets from the new release
+          gh release download "${{ github.event.release.tag_name }}" \
+            --dir temp-assets \
+            --repo ${{ github.repository }}
+          
+          echo "Downloaded files:"
+          ls -la temp-assets/
+      
+      - name: Process and rename files
+        run: |
+          cd temp-assets
+          
+          # Copy yml files directly
+          if [ -f "latest-mac.yml" ]; then
+            cp latest-mac.yml ../processed-assets/
+            echo "✓ Copied latest-mac.yml"
+          fi
+          
+          if [ -f "latest.yml" ]; then
+            cp latest.yml ../processed-assets/
+            echo "✓ Copied latest.yml"
+          fi
+          
+          # Find and rename the DMG file (handles any version number)
+          DMG_FILE=$(find . -name "results-business-consultants-*.dmg" -type f | head -n 1)
+          if [ -n "$DMG_FILE" ]; then
+            cp "$DMG_FILE" ../processed-assets/results-macos-installer.dmg
+            echo "✓ Renamed $(basename "$DMG_FILE") to results-macos-installer.dmg"
+          else
+            echo "⚠ Warning: No DMG file found"
+          fi
+          
+          # Find and process the EXE file
+          EXE_FILE=$(find . -name "results-business-consultants-*-setup.exe" -type f | head -n 1)
+          if [ -n "$EXE_FILE" ]; then
+            # Copy and rename the exe
+            cp "$EXE_FILE" ../processed-assets/results-windows-installer.exe
+            echo "✓ Renamed $(basename "$EXE_FILE") to results-windows-installer.exe"
+            
+            # Create a zip file containing the exe
+            cd ../processed-assets
+            zip results-windows-installer.exe.zip results-windows-installer.exe
+            echo "✓ Created results-windows-installer.exe.zip"
+            cd ../temp-assets
+          else
+            echo "⚠ Warning: No EXE setup file found"
+          fi
+          
+          cd ..
+          
+          echo ""
+          echo "Processed files ready for upload:"
+          ls -la processed-assets/
+      
+      - name: Get or Create Initial Release
+        id: initial_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Define the tag name for your initial release
+          INITIAL_TAG="initial"  # Change this if you prefer a different tag
+          
+          # Check if the initial release exists
+          if gh release view $INITIAL_TAG --repo ${{ github.repository }} > /dev/null 2>&1; then
+            echo "Initial release exists, will update it..."
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Creating initial release..."
+            gh release create $INITIAL_TAG \
+              --title "Latest Release - Auto Updated" \
+              --notes "This release is automatically updated with the latest stable version." \
+              --repo ${{ github.repository }}
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Delete old assets from initial release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          INITIAL_TAG="initial"  # Should match the tag above
+          
+          # Get all assets from the initial release and delete them
+          echo "Removing old assets from initial release..."
+          gh release view $INITIAL_TAG \
+            --repo ${{ github.repository }} \
+            --json assets \
+            --jq '.assets[].name' | while read -r asset; do
+            echo "  Deleting: $asset"
+            gh release delete-asset $INITIAL_TAG "$asset" \
+              --repo ${{ github.repository }} \
+              --yes || true
+          done
+      
+      - name: Upload new assets to initial release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          INITIAL_TAG="initial"  # Should match the tag above
+          
+          # Upload all processed files to the initial release
+          echo "Uploading new assets to initial release..."
+          for file in processed-assets/*; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              echo "  Uploading: $filename"
+              gh release upload $INITIAL_TAG "$file" \
+                --repo ${{ github.repository }} \
+                --clobber
+            fi
+          done
+      
+      - name: Update initial release notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          INITIAL_TAG="initial"  # Should match the tag above
+          
+          # Update the release notes with information about the latest version
+          LATEST_VERSION="${{ github.event.release.tag_name }}"
+          LATEST_NAME="${{ github.event.release.name }}"
+          CURRENT_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          # Get the URL for the original release
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/$LATEST_VERSION"
+          
+          NOTES="# Results Business Consultants - Latest Release
+
+This release automatically mirrors the latest stable version of the application.
+
+**Current Version:** $LATEST_VERSION
+**Last Updated:** $CURRENT_DATE
+
+## 📥 Download Files
+
+- **Windows Installer:** \`results-windows-installer.exe\` (also available as .zip)
+- **macOS Installer:** \`results-macos-installer.dmg\`
+- **Auto-update files:** \`latest.yml\` and \`latest-mac.yml\`
+
+## Installation Instructions
+
+### Windows
+1. Download \`results-windows-installer.exe\` (or the .zip version if needed)
+2. Run the installer and follow the setup wizard
+
+### macOS
+1. Download \`results-macos-installer.dmg\`
+2. Open the DMG file and drag the app to Applications
+
+## Note
+
+This is an automatically maintained release that always contains the latest stable build. 
+
+For specific version information and detailed release notes, see the original release: [$LATEST_VERSION]($RELEASE_URL)
+
+---
+*Automatically synchronized from [$LATEST_VERSION]($RELEASE_URL) on $CURRENT_DATE*"
+          
+          gh release edit $INITIAL_TAG \
+            --notes "$NOTES" \
+            --repo ${{ github.repository }}
+          
+          echo "✅ Initial release updated successfully!"
