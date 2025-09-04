@@ -3,6 +3,7 @@ name: Update Initial Release
 on:
   release:
     types: [published]
+  workflow_dispatch:  # No inputs needed - will use latest release
 
 jobs:
   update-initial-release:
@@ -15,6 +16,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
+      - name: Determine source release
+        id: source
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Manual trigger - get the latest release
+            LATEST_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' --repo ${{ github.repository }})
+            echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+            echo "Using latest release: $LATEST_TAG"
+          else
+            # Automatic trigger from release event
+            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+            echo "Using release from event: ${{ github.event.release.tag_name }}"
+          fi
+      
       - name: Download release assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -23,8 +40,8 @@ jobs:
           mkdir -p temp-assets
           mkdir -p processed-assets
           
-          # Download all assets from the new release
-          gh release download "${{ github.event.release.tag_name }}" \
+          # Download all assets from the source release
+          gh release download "${{ steps.source.outputs.tag }}" \
             --dir temp-assets \
             --repo ${{ github.repository }}
           
@@ -138,54 +155,47 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          INITIAL_TAG="initial"  # Should match the tag above
-          
-          # Update the release notes with information about the latest version
-          LATEST_VERSION="${{ github.event.release.tag_name }}"
-          LATEST_NAME="${{ github.event.release.name }}"
+          INITIAL_TAG="initial"
+          LATEST_VERSION="${{ steps.source.outputs.tag }}"
           CURRENT_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           
-          # Get the URL for the original release
-          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/$LATEST_VERSION"
+          # Get release info
+          RELEASE_NAME=$(gh release view "${{ steps.source.outputs.tag }}" --json name --jq .name --repo ${{ github.repository }} || echo "Release")
           
-          cat > release-notes.md << 'EOF'
+          cat > release-notes.md << EOF
           # Results Business Consultants - Latest Release
           
           This release automatically mirrors the latest stable version of the application.
           
-          **Current Version:** VERSION_PLACEHOLDER
-          **Last Updated:** DATE_PLACEHOLDER
+          **Current Version:** $LATEST_VERSION
+          **Release Name:** $RELEASE_NAME
+          **Last Updated:** $CURRENT_DATE
           
           ## 📥 Download Files
           
-          - **Windows Installer:** `results-windows-installer.exe` (also available as .zip)
-          - **macOS Installer:** `results-macos-installer.dmg`
-          - **Auto-update files:** `latest.yml` and `latest-mac.yml`
+          - **Windows Installer:** \`results-windows-installer.exe\` (also available as .zip)
+          - **macOS Installer:** \`results-macos-installer.dmg\`
+          - **Auto-update files:** \`latest.yml\` and \`latest-mac.yml\`
           
           ## Installation Instructions
           
           ### Windows
-          1. Download `results-windows-installer.exe` (or the .zip version if needed)
+          1. Download \`results-windows-installer.exe\` (or the .zip version if needed)
           2. Run the installer and follow the setup wizard
           
           ### macOS
-          1. Download `results-macos-installer.dmg`
+          1. Download \`results-macos-installer.dmg\`
           2. Open the DMG file and drag the app to Applications
           
           ## Note
           
           This is an automatically maintained release that always contains the latest stable build.
           
-          For specific version information and detailed release notes, see the original release: [VERSION_PLACEHOLDER](URL_PLACEHOLDER)
+          For specific version information and detailed release notes, see the original release: [$LATEST_VERSION](https://github.com/${{ github.repository }}/releases/tag/$LATEST_VERSION)
           
           ---
-          *Automatically synchronized from [VERSION_PLACEHOLDER](URL_PLACEHOLDER) on DATE_PLACEHOLDER*
+          *Automatically synchronized from [$LATEST_VERSION](https://github.com/${{ github.repository }}/releases/tag/$LATEST_VERSION) on $CURRENT_DATE*
           EOF
-          
-          # Replace placeholders
-          sed -i "s|VERSION_PLACEHOLDER|$LATEST_VERSION|g" release-notes.md
-          sed -i "s|DATE_PLACEHOLDER|$CURRENT_DATE|g" release-notes.md
-          sed -i "s|URL_PLACEHOLDER|$RELEASE_URL|g" release-notes.md
           
           # Update the release with the new notes
           gh release edit $INITIAL_TAG \
